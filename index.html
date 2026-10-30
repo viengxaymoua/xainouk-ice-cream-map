@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="hmn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Xainouk Ice Cream Customer Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--green:#16a34a;--red:#dc2626;--blue:#2563eb;--bg:#f4f6f8;--card:#fff;--ink:#17202a;--muted:#64748b}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:#116b39;color:#fff;padding:15px 16px;position:sticky;top:0;z-index:500}
+header h1{font-size:19px;margin:0 0 4px}header p{font-size:12px;margin:0;opacity:.9}
+main{max-width:900px;margin:auto;padding:12px}
+.card{background:var(--card);border-radius:14px;padding:13px;margin-bottom:12px;box-shadow:0 2px 8px #0000000b}
+h2{font-size:16px;margin:0 0 10px}
+label{font-size:13px;color:#334155;display:block;margin:8px 0 4px}
+input,select,button{font:inherit}
+input,select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:9px;background:white}
+button{border:0;border-radius:10px;padding:10px 12px;font-weight:650;cursor:pointer}
+.primary{background:var(--green);color:white}.secondary{background:#e2e8f0;color:#17202a}.danger{background:#fee2e2;color:#991b1b}.blue{background:#dbeafe;color:#1d4ed8}
+.row{display:flex;gap:8px;align-items:center}.row>*{flex:1}.row .fit{flex:0 0 auto}
+#map{height:48vh;min-height:300px;border-radius:12px;z-index:1}
+.small{font-size:12px;color:var(--muted)}.hint{font-size:12px;color:#475569;line-height:1.45}
+.status{display:inline-block;padding:3px 8px;border-radius:99px;font-size:12px;font-weight:700;color:#fff}
+.green{background:var(--green)}.red{background:var(--red)}
+.listitem{padding:10px 0;border-bottom:1px solid #e2e8f0}.listitem:last-child{border-bottom:0}
+.listitem strong{display:block}.listitem .meta{font-size:12px;color:var(--muted);margin:3px 0 7px}
+.listitem .actions{display:flex;flex-wrap:wrap;gap:6px}.listitem .actions button{font-size:12px;padding:7px 9px}
+#customerList{max-height:330px;overflow:auto}
+#routeList{margin:0;padding-left:25px}.routeitem{padding:5px 0}
+.routeitem button{padding:5px 8px;margin-left:4px}
+.pin-wrap{position:relative;width:34px;height:44px}
+.pin{position:absolute;top:0;left:2px;width:30px;height:30px;border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 5px #0005}
+.pin.greenpin{background:#16a34a}.pin.redpin{background:#dc2626}
+.pin-number{position:absolute;left:5px;top:4px;z-index:3;background:transparent;color:#fff;border:0;border-radius:0;min-width:18px;height:18px;padding:0;font-size:12px;font-weight:900;line-height:18px;text-align:center;text-shadow:0 1px 2px #0008;box-shadow:none;white-space:nowrap}
+.popup-title{font-weight:800;font-size:15px;margin-bottom:4px}.popup-meta{font-size:12px;margin-bottom:8px}.popup-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.popup-actions button{font-size:12px;padding:8px}
+details summary{font-weight:700;cursor:pointer}
+footer{text-align:center;color:#64748b;font-size:11px;padding:10px}
+/* Map fills the first screen; all tools appear below when scrolling */
+header{position:relative;top:auto;padding:8px 12px;z-index:500}
+header h1{font-size:17px;margin:0 0 2px}header p{font-size:11px}
+#mapScreen{position:relative;height:calc(100dvh - 57px);min-height:420px;width:100%;margin:0;padding:0;overflow:hidden;background:#e2e8f0}
+#map{height:100%;width:100%;min-height:0;border-radius:0;z-index:1}
+#mapTitle{position:absolute;top:8px;left:105px;right:auto;transform:none;z-index:450;background:#116b39;color:#fff;padding:8px 10px;border-radius:10px;font-size:13px;font-weight:800;box-shadow:0 1px 5px #0003;pointer-events:none;white-space:nowrap;max-width:calc(100% - 220px);overflow:hidden;text-overflow:ellipsis;text-align:center}
+#mapSearchBox{position:absolute;top:8px;left:54px;right:8px;transform:none;z-index:700;display:flex;gap:7px;align-items:center;background:#ffffff;padding:7px;border-radius:11px;box-shadow:0 2px 8px #0005;width:auto;max-width:none;min-height:54px}
+#mapSearchBox:not(.collapsed){left:54px;right:8px;width:auto;min-height:58px;padding:8px;background:#fff;box-shadow:0 3px 12px #0007}
+#mapSearchBox:not(.collapsed) input{display:block!important;flex:1 1 0;width:1%;min-width:0;height:44px;font-size:18px;font-weight:700;color:#111827;background:#fff;border:2px solid #2563eb}
+#mapSearchBox:not(.collapsed) #placeSearchBtn{display:block!important;height:44px;font-size:15px;font-weight:800}
+#mapSearchBox.collapsed{top:8px;right:auto;left:54px;transform:none;width:38px;height:38px;min-height:0;padding:0;justify-content:center;gap:0;background:transparent;border:0;border-radius:0;box-shadow:none}
+#mapSearchBox.collapsed input,#mapSearchBox.collapsed #placeSearchBtn{display:none!important;visibility:hidden!important;width:0!important;height:0!important;padding:0!important;margin:0!important;border:0!important}
+#mapSearchBox #searchToggle{display:none}
+#mapSearchBox.collapsed #searchToggle{display:block;width:36px;height:36px;padding:0;font-size:21px;background:transparent;color:#17202a;border:0;box-shadow:none;border-radius:0}
+#mapSearchBox:not(.collapsed) #searchToggle{display:block;padding:8px 10px;background:#e2e8f0;color:#17202a}
+#mapSearchBox input{display:block!important;min-width:0;width:100%;flex:1 1 auto;margin:0;padding:11px 10px;font-size:16px;line-height:1.3;color:#111827;background:#fff;border:2px solid #2563eb;border-radius:8px;opacity:1}
+#mapSearchBox button{padding:10px 12px;margin:0;white-space:nowrap;flex:0 0 auto}
+#mapNavBox{position:absolute;top:54px;right:8px;z-index:500;display:flex;flex-direction:column;gap:3px;width:116px;align-items:stretch}
+#locateOnMapBtn{position:absolute;right:8px;bottom:48px;z-index:600;background:#fff;color:#1d4ed8;border:2px solid #2563eb;border-radius:12px;padding:11px 13px;font-size:14px;font-weight:800;box-shadow:0 2px 8px #0004}
+.my-location-label{background:#1d4ed8;color:white;border:2px solid white;border-radius:8px;padding:4px 7px;font-weight:800;font-size:12px;white-space:nowrap;box-shadow:0 1px 5px #0005}
+.leaflet-tooltip.my-location-label:before{display:none}
+#mapNavBox button{padding:5px 6px;font-size:10px;line-height:1.15;white-space:normal;box-shadow:0 1px 5px #0003;border-radius:8px;min-height:28px}
+#mapTip{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:450;background:#ffffffed;color:#334155;padding:6px 10px;border-radius:9px;font-size:11px;white-space:nowrap;box-shadow:0 1px 5px #0002;pointer-events:none}
+.leaflet-top.leaflet-right{top:8px;right:8px}
+.leaflet-control-layers{border:0!important;border-radius:10px!important;box-shadow:0 1px 6px #0003!important}
+.leaflet-control-layers-toggle{width:38px!important;height:38px!important;background-size:22px 22px!important}
+main{max-width:900px;margin:auto;padding:10px}
+.layout{display:block}.layout>section{display:block}.layout .card{margin-bottom:12px}
+@media(max-width:380px){#mapTitle{left:98px;max-width:calc(100% - 190px);font-size:11px;padding:8px 6px}#mapSearchBox{left:50px;right:6px;gap:4px;padding:5px}#mapSearchBox input{font-size:16px;padding:10px 7px}#mapSearchBox button{padding:9px 8px}#mapSearchBox.collapsed{left:50px;right:auto}}
+@media(min-width:700px){#mapScreen{height:calc(100dvh - 60px);min-height:500px}#map{height:100%}.layout{display:grid;grid-template-columns:1fr 1fr;gap:12px}}
+
+#mapSearchBox.collapsed input{display:none!important}
+#mapSearchBox.collapsed #placeSearchBtn{display:none!important}
+</style>
+</head>
+<body>
+<header><h1>🍦 Xainouk Ice Cream Customer Map</h1><p>Khaws customer • cim xim • npaj kev mus xa khoom</p></header>
+    <section id="mapScreen" aria-label="Daim map customer">
+      <div id="mapTitle">🗺️ Daim map customer</div>
+      <div id="mapSearchBox" class="collapsed"><button id="searchToggle" aria-label="Qhib nrhiav">🔍</button><input id="placeSearch" type="text" inputmode="numeric" autocomplete="off" autocapitalize="off" placeholder="Sau tus lej customer..." aria-label="Sau tus lej customer" enterkeyhint="search"><button class="blue" id="placeSearchBtn">Nrhiav</button></div>
+      <div id="mapNavBox"><button class="primary" id="startVoiceNavBtn">🧭 Pib suab qhia kev (hauv app)</button></div>
+      <button id="locateOnMapBtn" type="button">📍 Qhia kuv qhov chaw</button>
+      <div id="map"></div>
+      <div id="mapTip">Nias 📍 Qhia kuv qhov chaw kom pom koj lub cim xiav; nias tus cim customer kom pom cov ntaub ntawv</div>
+    </section>
+
+
+<main>
+  <div class="card">
+    <p id="navStatus" class="hint">Nrhiav customer: sau tus lej nyob ntawm hauv ntej lub npe rau hauv lub thawv 🔍 saum daim map.</p>
+    <div class="row">
+      <button class="primary" id="myLocationBtn">📍 Nrhiav kuv qhov chaw</button>
+      <button class="secondary" id="refreshBtn">⟳ Hloov daim map</button>
+    </div>
+    <p class="hint">Daim map xav tau internet. Tso cai Location rau Chrome. Thaum koj mus txog customer, nias “📍 Siv kuv GPS” kom khaws qhov chaw koj sawv; yog xav kho pin kom raug, zoom daim map thiab nias “Xaiv ntawm map”. Cov customer khaws hauv browser ntawm lub xov tooj no.</p>
+  </div>
+  <div class="layout">
+    <section>
+      <div class="card">
+        <h2>➕ Ntxiv customer</h2>
+        <form id="customerForm">
+          <label for="name">Lub npe customer *</label><input id="name" required placeholder="Piv txwv: Khw Ntxawm">
+          <label for="phone">Xov tooj</label><input id="phone" type="tel" placeholder="020...">
+          <label for="status">Xim customer</label>
+          <select id="status"><option value="green">🟢 Ntsuab — lees yuav khoom</option><option value="red">🔴 Liab — tseem tsis tau yuav</option></select>
+          <label for="lastDelivery">Hnub kawg xa khoom (yog paub)</label><input id="lastDelivery" type="date">
+          <div class="row" style="margin-top:8px">
+            <button type="button" class="blue" id="gpsBtn">📍 Siv kuv GPS</button>
+            <button type="button" class="secondary" id="mapPickBtn">Xaiv ntawm map</button>
+          </div>
+          <p id="coordText" class="small">Tseem tsis tau xaiv qhov chaw. Mus txog ntawm customer ces nias “Siv kuv GPS”, lossis xaiv qhov chaw pin ntawm daim map.</p>
+          <button class="primary" type="submit" style="width:100%;margin-top:8px">Khaws customer</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2>🚚 Txoj kev tag kis / hnub no</h2>
+        <p class="hint">Xaiv cov customer ntsuab uas koj xav mus. Hloov qhov kev mus nce lossis nqis raws li koj xav.</p>
+        <div class="row">
+          <button class="primary" id="addGreensBtn">Ntxiv txhua tus ntsuab</button>
+          <button class="secondary" id="clearRouteBtn">Lwv txoj kev</button>
+        </div>
+        <ol id="routeList"></ol>
+        <div class="row" style="margin-top:8px">
+          <button class="blue" id="openRouteBtn">Qhib txoj kev hauv Google Maps</button>
+          <button class="primary" id="finishRouteBtn">Tiav kev / cim xa lawm</button>
+        </div>
+        <p class="small">Thaum nias “Tiav kev”, cov customer hauv txoj kev yuav cim hnub no ua hnub xa khoom thiab khaws keeb kwm kev mus.</p>
+      </div>
+    </section>
+  </div>
+  <div class="card">
+    <h2>👥 Cov customer</h2>
+    <input id="search" placeholder="Nrhiav npe lossis xov tooj..." style="margin-bottom:8px">
+    <div id="customerList"></div>
+  </div>
+  <div class="card">
+    <h2>📅 Keeb kwm kev mus xa khoom (30 hnub)</h2>
+    <label for="historyDate">Xaiv hnub tim</label><input id="historyDate" type="date">
+    <div id="historyList" class="hint" style="margin-top:8px">Xaiv hnub tim kom saib cov customer uas koj cim tias tau mus xa lawm.</div>
+    <button class="danger" id="clearOldBtn" style="margin-top:10px">Lwv keeb kwm dhau 30 hnub tam sim no</button>
+  </div>
+  <div class="card">
+    <details>
+      <summary>ℹ️ Lus qhia tseem ceeb</summary>
+      <p class="hint">• Hloov hom map ntawm lub pob xaiv saum daim map. “Kev / tsev” qhia kev thiab cov npe chaw; “Satellite” qhia duab saum ntuj thiab koj xaiv ntxiv “Npe chaw saum Satellite” tau.<br>• Tus lej saum tus cim yog hnub dhau txij hnub kawg xa khoom. Hnub xa khoom yog hnub 0; hnub tom qab yog 1, thiab ntxiv mus.<br>
+      • Thaum dhau 1 hnub txij hnub kawg xa khoom, customer yuav hloov xim liab automatic. Koj tseem hloov xim tau manually.<br>
+      • Cov ntaub ntawv khaws hauv browser ntawm lub xov tooj no xwb. Tsis txhob lwv Chrome cov ntaub ntawv yog xav khaws customer.<br>
+      • Nrhiav chaw saum daim map siv internet. Suab qhia kev siv GPS, internet, thiab lub suab Thai (yog xov tooj muaj). Suab qhia kev yog kev pab ntxiv; xyuas kev thiab tsheb tiag tiag txhua lub sijhawm.</p>
+    </details>
+  </div>
+  <footer>Xainouk Ice Cream Customer Map • Khaws ntaub ntawv hauv lub xov tooj</footer>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const STORE='xainoukIceCreamCustomers_v1', ROUTE='xainoukIceCreamRoute_v1', HISTORY='xainoukIceCreamHistory_v1';
+let customers=load(STORE,[]), route=load(ROUTE,[]), history=load(HISTORY,[]);
+let selectedGPS=null, picking=false, markers={}, me=null, meLabel=null, accuracyCircle=null, liveGPSWatch=null, hasCenteredLiveGPS=false, lastLivePosition=null, navWatch=null, navSteps=[], announced=new Set(), destination=null, routeLine=null;
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+function load(k,f){try{return JSON.parse(localStorage.getItem(k))||f}catch(e){return f}}
+function save(){localStorage.setItem(STORE,JSON.stringify(customers));localStorage.setItem(ROUTE,JSON.stringify(route));localStorage.setItem(HISTORY,JSON.stringify(history))}
+function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function daysSince(date){if(!date)return '—';const a=new Date(date+'T12:00:00'),b=new Date(today()+'T12:00:00');return Math.max(0,Math.floor((b-a)/86400000))}
+function dayLabel(c){return c.lastDelivery?daysSince(c.lastDelivery):'—'}
+const map=L.map('map').setView([17.9757,102.6331],12);
+// Daim map kev pub dawb
+const streetLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'});
+// Daim duab satellite thiab cov npe chaw/kev saum daim duab
+const satelliteLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri and its imagery providers'});
+const satelliteLabels=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,opacity:0.9,attribution:'Labels &copy; Esri'});
+streetLayer.addTo(map);
+setTimeout(()=>map.invalidateSize(),250);window.addEventListener('resize',()=>map.invalidateSize());
+const baseMaps={'Kev / tsev (OpenStreetMap)':streetLayer,'Satellite (duab saum ntuj)':satelliteLayer};
+const overlays={'Npe chaw saum Satellite':satelliteLabels};
+L.control.layers(baseMaps,overlays,{collapsed:true,position:'topright'}).addTo(map); // Siv qhov zoom control uas Leaflet tsim cia li xwb, tsis txhob ntxiv ib txheej ntxiv
+function icon(c){return L.divIcon({className:'',html:`<div class="pin-wrap"><div class="pin ${c.status==='green'?'greenpin':'redpin'}"></div><div class="pin-number">${escapeHtml(dayLabel(c))}</div></div>`,iconSize:[38,46],iconAnchor:[18,42],popupAnchor:[0,-40]})}
+function googleUrl(c){return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(c.lat+','+c.lng)+'&travelmode=driving'}
+function popup(c){return `<div class="popup-title">${escapeHtml(c.name)}</div><div class="popup-meta">${escapeHtml(c.phone||'Tsis tau sau xov tooj')}<br>Hnub kawg xa: ${escapeHtml(c.lastDelivery||'Tsis tau sau')}<br>Hnub dhau: ${escapeHtml(dayLabel(c))} <span class="status ${c.status==='green'?'green':'red'}">${c.status==='green'?'Ntsuab':'Liab'}</span></div><div class="popup-actions"><button onclick="window.xainoukExternalRoute('${c.id}')" style="background:#dbeafe;color:#1d4ed8">Qhia kev (Maps sab nraud)</button><button onclick="window.xainoukCall('${c.id}')" style="background:#dcfce7;color:#166534">WhatsApp</button><button onclick="window.xainoukToggle('${c.id}')" style="background:#f1f5f9">Hloov xim</button><button onclick="window.xainoukDelete('${c.id}')" style="background:#fee2e2;color:#991b1b">Lwv chaw</button></div>`}
+function renderMap(){Object.values(markers).forEach(m=>map.removeLayer(m));markers={};customers.forEach(c=>{if(!Number.isFinite(c.lat)||!Number.isFinite(c.lng))return;const m=L.marker([c.lat,c.lng],{icon:icon(c)}).addTo(map).bindPopup(popup(c));markers[c.id]=m})}
+function renderCustomers(){const q=$('search').value.trim().toLowerCase();const arr=customers.filter(c=>(c.name+' '+(c.phone||'')).toLowerCase().includes(q));$('customerList').innerHTML=arr.length?arr.map(c=>`<div class="listitem"><strong>${escapeHtml(c.name)} <span class="status ${c.status==='green'?'green':'red'}">${c.status==='green'?'Ntsuab':'Liab'}</span> <span style="font-size:12px;background:#f1f5f9;padding:3px 7px;border-radius:8px">Hnub ${escapeHtml(dayLabel(c))}</span></strong><div class="meta">${escapeHtml(c.phone||'Tsis muaj xov tooj')} • Hnub kawg xa: ${escapeHtml(c.lastDelivery||'Tsis tau xa / tsis tau sau')}</div><div class="actions"><button class="blue" onclick="window.xainoukRoute('${c.id}')">Qhia kev mus</button><button class="secondary" onclick="window.xainoukCall('${c.id}')">WhatsApp</button><button class="secondary" onclick="window.xainoukToggle('${c.id}')">Hloov xim</button><button class="danger" onclick="window.xainoukDelete('${c.id}')">Lwv</button><button class="secondary" onclick="window.xainoukEdit('${c.id}')">Kho ntaub ntawv</button></div></div>`).join(''):'<p class="small">Tseem tsis muaj customer. Ntxiv customer saum toj no.</p>'}
+function renderRoute(){route=route.filter(id=>customers.some(c=>c.id===id));$('routeList').innerHTML=route.map((id,i)=>{const c=customers.find(x=>x.id===id);return `<li class="routeitem">${escapeHtml(c.name)} <button class="secondary" onclick="window.xainoukMove('${id}',-1)">↑</button><button class="secondary" onclick="window.xainoukMove('${id}',1)">↓</button><button class="danger" onclick="window.xainoukRemoveRoute('${id}')">Tshem</button></li>`}).join('');save()}
+function renderHistory(){const date=$('historyDate').value;if(!date){$('historyList').textContent='Xaiv hnub tim kom saib keeb kwm.';return}const item=history.find(h=>h.date===date);$('historyList').innerHTML=item?`<strong>Hnub ${escapeHtml(item.date)}</strong><ol>${item.stops.map(s=>`<li>${escapeHtml(s.name)} — ${escapeHtml(s.lat.toFixed(5))}, ${escapeHtml(s.lng.toFixed(5))}</li>`).join('')}</ol><button class="blue" onclick="window.xainoukHistoryRoute('${item.date}')">Qhib txoj kev hnub no hauv Google Maps</button>`:'Hnub no tsis muaj keeb kwm kev mus xa khoom.'}
+function showMyLocation(lat,lng,zoom=true,accuracy=null){
+ const ll=[lat,lng];
+ if(me)map.removeLayer(me);
+ if(meLabel)map.removeLayer(meLabel);
+ me=L.circleMarker(ll,{radius:9,color:'#ffffff',weight:4,fillColor:'#1769ff',fillOpacity:1}).addTo(map).bindPopup('<strong>📍 Koj nyob ntawm no</strong>'+(accuracy!==null?'<br>GPS kwv yees yuam kev '+Math.round(accuracy)+' m':'') );
+ meLabel=L.marker(ll,{interactive:false,icon:L.divIcon({className:'',html:'<div class="my-location-label">📍 Kuv nyob ntawm no</div>',iconSize:[120,28],iconAnchor:[60,38]})}).addTo(map);
+ if(accuracy!==null && Number.isFinite(accuracy)){if(accuracyCircle)map.removeLayer(accuracyCircle);accuracyCircle=L.circle(ll,{radius:Math.max(accuracy,8),color:'#2563eb',weight:1,fillColor:'#60a5fa',fillOpacity:.12,interactive:false}).addTo(map)}
+ if(zoom)map.setView(ll,17);
+}
+function startLiveGPS(){
+ if(!navigator.geolocation || !window.isSecureContext || liveGPSWatch!==null)return;
+ liveGPSWatch=navigator.geolocation.watchPosition(pos=>{
+  const lat=pos.coords.latitude,lng=pos.coords.longitude;lastLivePosition=pos;
+  showMyLocation(lat,lng,!hasCenteredLiveGPS,pos.coords.accuracy);
+  if(!hasCenteredLiveGPS){hasCenteredLiveGPS=true;map.setView([lat,lng],17);$('navStatus').textContent='Pom koj qhov chaw nyob tam sim no lawm. Lub cim xiav yog koj; lub voj xiav qhia GPS qhov kwv yees.';}
+ },err=>{if(!hasCenteredLiveGPS){$('navStatus').textContent='GPS tseem nrhiav tsis tau. Tso cai Location rau Chrome, ces nias “Qhia kuv qhov chaw”.'}},{enableHighAccuracy:true,maximumAge:5000,timeout:25000});
+}
+function applyAutomaticDeliveryColor(){let changed=false;customers.forEach(c=>{if(!c.manualColorOverride&&c.lastDelivery&&daysSince(c.lastDelivery)>=1&&c.status!=='red'){c.status='red';changed=true}});if(changed)save()}
+function render(){applyAutomaticDeliveryColor();renderMap();renderCustomers();renderRoute();renderHistory()}
+function getCustomer(id){return customers.find(c=>c.id===id)}
+window.xainoukExternalRoute=id=>{const c=getCustomer(id);if(!c)return;if(!Number.isFinite(c.lat)||!Number.isFinite(c.lng)){alert('Customer no tseem tsis tau muaj GPS. Kho qhov chaw Customer ua ntej.');return}const url=googleUrl(c);window.open(url,'_blank')};
+window.xainoukRoute=async id=>{
+ const c=getCustomer(id);if(!c)return;
+ if(!Number.isFinite(c.lat)||!Number.isFinite(c.lng)){alert('Customer no tseem tsis tau muaj GPS. Kho qhov chaw Customer ua ntej.');return}
+ if(!route.includes(id))route.unshift(id);renderRoute();destination=c;
+ $('navStatus').textContent='Tab tom nrhiav koj qhov chaw GPS thiab kos txoj kev hauv daim map...';
+ if(!navigator.geolocation){$('navStatus').textContent='Browser no tsis txhawb GPS. Tso cai rau Chrome Location lossis siv Google Maps.';return}
+ if(!window.isSecureContext){$('navStatus').textContent='GPS yuav tsum qhib lub website uas pib https://.';alert('Qhib Xainouk Ice Cream Maps ntawm qhov link https:// thiab tso cai Location rau Chrome.');return}
+ navigator.geolocation.getCurrentPosition(async pos=>{
+   const from=[pos.coords.latitude,pos.coords.longitude],to=[Number(c.lat),Number(c.lng)];
+   selectedGPS={lat:from[0],lng:from[1]};showMyLocation(from[0],from[1],false);
+   try{
+    const url=`https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson&steps=true`;
+    const resp=await fetch(url);if(!resp.ok)throw Error('network');const data=await resp.json();if(data.code!=='Ok'||!data.routes?.length)throw Error('route');
+    if(routeLine)map.removeLayer(routeLine);const rr=data.routes[0];routeLine=L.geoJSON(rr.geometry,{style:{color:'#1769ff',weight:6,opacity:.9}}).addTo(map);
+    const ends=L.featureGroup([L.marker(from),L.marker(to)]);map.fitBounds(routeLine.getBounds().extend(ends.getBounds()),{padding:[35,35]});
+    $('navStatus').textContent='Pom txoj kev hauv daim map mus rau '+c.name+'. Kwv yees '+(rr.distance/1000).toFixed(1)+' km, '+Math.round(rr.duration/60)+' feeb. Nias “Qhia kev ntawm daim map” yog xav pib suab qhia kev.';
+   }catch(err){$('navStatus').textContent='Kos txoj kev tsis tau. Xyuas internet thiab sim dua. Koj tseem pom tus customer hauv daim map.';alert('Rub txoj kev los kos hauv app tsis tau. Xyuas internet thiab sim dua.');}
+ },e=>{const msg=gpsErrorMessage(e);$('navStatus').textContent='GPS tsis tau: '+msg;alert('Nrhiav GPS tsis tau. '+msg);},{enableHighAccuracy:true,timeout:25000,maximumAge:0});
+};
+window.xainoukCall=id=>{const c=getCustomer(id);if(!c||!c.phone){alert('Customer no tseem tsis tau sau xov tooj.');return}let n=c.phone.replace(/\D/g,'');if(n.startsWith('00856'))n=n.slice(2);else if(n.startsWith('0'))n='856'+n.slice(1);else if(!n.startsWith('856')&&n.length<=10)n='856'+n; if(n.length<8){alert('Tus xov tooj no tsis txaus. Thov kho tus xov tooj Customer ua ntej.');return}location.href='https://wa.me/'+n};
+window.xainoukToggle=id=>{const c=getCustomer(id);if(!c)return;c.status=c.status==='green'?'red':'green';c.manualColorOverride=true;save();render()};
+window.xainoukDelete=id=>{const c=getCustomer(id);if(!c)return;if(confirm('Koj puas xav lwv customer '+c.name+'?')){customers=customers.filter(x=>x.id!==id);route=route.filter(x=>x!==id);save();render()}};
+window.xainoukEdit=id=>{const c=getCustomer(id);if(!c)return;const name=prompt('Kho lub npe customer:',c.name);if(name===null)return;const phone=prompt('Kho xov tooj:',c.phone||'');if(phone===null)return;c.name=name.trim()||c.name;c.phone=phone.trim();const status=confirm('Nias OK yog Ntsuab (yuav mus xa), Cancel yog Liab (tsis mus xa).');c.status=status?'green':'red';c.manualColorOverride=true;const d=prompt('Hnub kawg xa khoom (YYYY-MM-DD), tso khoob yog tsis paub:',c.lastDelivery||'');if(d!==null&&(!d||/^\d{4}-\d{2}-\d{2}$/.test(d)))c.lastDelivery=d||'';save();render()};
+window.xainoukMove=(id,dir)=>{const i=route.indexOf(id),j=i+dir;if(i<0||j<0||j>=route.length)return;[route[i],route[j]]=[route[j],route[i]];save();renderRoute()};
+window.xainoukRemoveRoute=id=>{route=route.filter(x=>x!==id);save();renderRoute()};
+window.xainoukHistoryRoute=date=>{const h=history.find(x=>x.date===date);if(h&&h.stops.length)openDirections(h.stops)};
+function openDirections(stops){if(!stops.length){alert('Tsis muaj chaw hauv txoj kev.');return}let url;if(stops.length===1)url='https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(stops[0].lat+','+stops[0].lng)+'&travelmode=driving';else{url='https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(stops[0].lat+','+stops[0].lng)+'&destination='+encodeURIComponent(stops[stops.length-1].lat+','+stops[stops.length-1].lng)+'&waypoints='+encodeURIComponent(stops.slice(1,-1).map(s=>s.lat+','+s.lng).join('|'))+'&travelmode=driving'}window.open(url,'_blank')}
+
+// Nrhiav customer raws tus lej nyob ntawm hauv ntej lub npe xwb
+function searchPlace(){
+ const input=$('placeSearch');
+ const q=input.value.trim().replace(/[^0-9]/g,'');
+ if(!q){$('navStatus').textContent='Thov sau tus lej customer, piv txwv 259.';input.focus();return}
+ const matches=customers.filter(c=>{
+   const name=String(c.name||'').trim();
+   const leadingNumber=name.match(/^(\d+)(?=\s|$|[.、,:：-])/);
+   return leadingNumber && leadingNumber[1]===q;
+ });
+ if(!matches.length){$('navStatus').textContent='Nrhiav tsis pom customer tus lej '+q+'. Xyuas tus lej thiab sim dua.';return}
+ const c=matches[0];
+ const lat=Number(c.lat), lng=Number(c.lng);
+ if(Number.isFinite(lat)&&Number.isFinite(lng)){
+   map.setView([lat,lng],17);
+   const marker=markers[c.id];
+   if(marker)marker.openPopup();
+ }
+ $('navStatus').textContent='Pom customer: '+c.name+(matches.length>1?' (muaj '+matches.length+' tus siv tib tus lej; qhia tus thawj)':'');
+}
+$('placeSearchBtn').onclick=searchPlace;$('placeSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchPlace()}});
+$('searchToggle').onclick=()=>{const box=$('mapSearchBox');if(box.classList.contains('collapsed')){box.classList.remove('collapsed');$('placeSearch').focus();$('placeSearch').select()}else{box.classList.add('collapsed');$('placeSearch').value=''}};
+function sayThai(text){if(!('speechSynthesis' in window)){ $('navStatus').textContent='Xov tooj/browser no tsis txhawb suab qhia kev.';return}window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='th-TH';u.rate=0.92;const voices=window.speechSynthesis.getVoices();const v=voices.find(x=>x.lang&&x.lang.toLowerCase().startsWith('th'));if(v)u.voice=v;window.speechSynthesis.speak(u)}
+function distanceM(a,b){const R=6371000,rad=x=>x*Math.PI/180,dLat=rad(b[0]-a[0]),dLon=rad(b[1]-a[1]);const x=Math.sin(dLat/2)**2+Math.cos(rad(a[0]))*Math.cos(rad(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))}
+function turnText(step){const m=(step.maneuver||{}),type=m.type||'',mod=m.modifier||'';if(type==='arrive')return 'ถึงที่หมายแล้วค่ะ';if(type==='roundabout'||type==='rotary')return 'เข้าวงเวียน แล้วออกทางที่ '+(m.exit||'ถัดไป');if(type==='turn'||type==='end of road'||type==='fork'){if(mod.includes('left'))return 'เลี้ยวซ้าย';if(mod.includes('right'))return 'เลี้ยวขวา';if(mod==='uturn')return 'กลับรถ';}if(type==='merge')return 'รวมเข้าเลน';if(type==='new name'||type==='continue'||type==='depart')return 'ขับตรงไป';return 'ขับต่อไปตาม txoj kev';}
+async function startVoiceNavigation(){
+ if(!navigator.geolocation){alert('Xov tooj no tsis muaj GPS.');return}
+ let target=null;
+ if(route.length){const c=getCustomer(route[0]);if(c&&Number.isFinite(c.lat)&&Number.isFinite(c.lng))target=c}
+ if(!target){const valid=customers.filter(c=>c.status==='green'&&Number.isFinite(c.lat)&&Number.isFinite(c.lng));if(valid.length===1)target=valid[0];else if(valid.length>1){const q=prompt('Sau npe customer uas xav mus txog:');target=valid.find(c=>c.name.toLowerCase()===String(q||'').toLowerCase())||valid.find(c=>c.name.toLowerCase().includes(String(q||'').toLowerCase()))}}
+ if(!target){alert('Xaiv ib tug customer ua ntej: nias tus pin thiab xaiv “Qhia kev mus”, lossis ntxiv customer rau txoj kev.');return}
+ destination=target; $('navStatus').textContent='Npaj txoj kev mus rau '+target.name+'...';
+ navigator.geolocation.getCurrentPosition(async pos=>{
+  const from=[pos.coords.latitude,pos.coords.longitude],to=[target.lat,target.lng];
+  try{const url=`https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson&steps=true`;const r=await fetch(url);const data=await r.json();if(data.code!=='Ok'||!data.routes?.length)throw Error('route');const rr=data.routes[0];navSteps=rr.legs.flatMap(l=>l.steps);announced.clear();if(routeLine)map.removeLayer(routeLine);routeLine=L.geoJSON(rr.geometry,{style:{color:'#1769ff',weight:6,opacity:.85}}).addTo(map);map.fitBounds(routeLine.getBounds(),{padding:[35,35]});sayThai('กำลังนำทาง ไปยัง'+target.name);$('navStatus').textContent='Suab qhia kev tab tom khiav mus rau '+target.name+'. Cia GPS qhib thiab tso cai rau Chrome.';
+   if(navWatch!==null)navigator.geolocation.clearWatch(navWatch);navWatch=navigator.geolocation.watchPosition(p=>{const here=[p.coords.latitude,p.coords.longitude];showMyLocation(here[0],here[1],false);map.panTo(here,{animate:true});let closest=null,dist=Infinity;navSteps.forEach((st,i)=>{if(!st.maneuver?.location)return;const d=distanceM(here,[st.maneuver.location[1],st.maneuver.location[0]]);if(d<dist){dist=d;closest={st,i}}});if(distanceM(here,to)<35){sayThai('ถึงที่หมายแล้วค่ะ '+target.name);$('navStatus').textContent='ถึง customer '+target.name+' lawm.';if(navWatch!==null)navigator.geolocation.clearWatch(navWatch);navWatch=null;return}if(closest&&dist<120&&!announced.has(closest.i)){announced.add(closest.i);const txt=turnText(closest.st);sayThai((dist<55?'ตอนนี้':'อีกประมาณ '+Math.max(50,Math.round(dist/10)*10)+' เมตร')+txt);$('navStatus').textContent='Suab qhia kev: '+txt+' ('+Math.round(dist)+' m)';}},e=>{$('navStatus').textContent='GPS poob lawm lossis tsis raug tso cai. Qhib Location thiab Chrome GPS.'},{enableHighAccuracy:true,maximumAge:3000,timeout:20000});
+  }catch(e){$('navStatus').textContent='Rub txoj kev tsis tau. Xyuas internet/GPS. Koj tseem nias Qhia kev mus qhib Google Maps tau.';alert('Tsim txoj kev tsis tau. Xyuas internet, GPS thiab sim dua.')}
+ },e=>alert('Thov tso cai rau Chrome siv GPS thiab qhib Location hauv xov tooj.'),{enableHighAccuracy:true,timeout:15000});
+}
+$('startVoiceNavBtn').onclick=startVoiceNavigation;
+
+function gpsErrorMessage(e){if(!window.isSecureContext)return 'Qhov no tsis yog qhov chaw HTTPS ruaj ntseg. Yog koj qhib daim HTML uas download rau xov tooj, GPS yuav tsis ua haujlwm hauv qhov chaw ntawd. Yuav tsum qhib daim app ntawm ib lub website uas pib https://.';if(!e)return 'Chrome tsis tau qhia qhov laj thawj.';if(e.code===1)return 'Chrome lossis qhov chaw website tsis tso cai GPS. Mus rau Chrome > Site settings > Location thiab tso cai rau lub website; xyuas Android Location thiab.';if(e.code===2)return 'Xov tooj nrhiav tsis tau GPS tam sim no. Qhib Location, qhib internet, tawm mus rau qhov chaw qhib ntuj, thiab sim dua.';if(e.code===3)return 'GPS siv sijhawm ntev dhau. Qhib Location, tos ib pliag rau sab nraum zoov thiab sim dua.';return e.message||'Tsis paub qhov laj thawj.'}
+function useGPS(showAlert=true){if(!navigator.geolocation){const msg='Chrome tsis muaj GPS function rau qhov chaw no.';$('navStatus').textContent=msg;if(showAlert)alert(msg);return}if(!window.isSecureContext){const msg=gpsErrorMessage(null);$('navStatus').textContent='GPS tseem tsis tau qhib: '+msg;if(showAlert)alert(msg);return}$('navStatus').textContent='Tab tom nrhiav GPS. Tos li 5–15 vib nas this...';navigator.geolocation.getCurrentPosition(pos=>{selectedGPS={lat:pos.coords.latitude,lng:pos.coords.longitude};$('coordText').textContent='GPS: '+selectedGPS.lat.toFixed(6)+', '+selectedGPS.lng.toFixed(6)+' • kwv yees '+Math.round(pos.coords.accuracy)+' m';lastLivePosition=pos;showMyLocation(selectedGPS.lat,selectedGPS.lng,true,pos.coords.accuracy);hasCenteredLiveGPS=true;if(me)me.openPopup();$('navStatus').textContent='Pom koj qhov chaw lawm. Lub cim xiav yog koj qhov chaw tam sim no; voj xiav qhia qhov kwv yees ntawm GPS.'},e=>{const msg=gpsErrorMessage(e);$('navStatus').textContent='GPS tsis tau: '+msg;if(showAlert)alert('Nrhiav GPS tsis tau. '+msg)}, {enableHighAccuracy:true,timeout:20000,maximumAge:0})}
+$('myLocationBtn').onclick=()=>useGPS(true);$('gpsBtn').onclick=()=>useGPS(true);$('locateOnMapBtn').onclick=()=>useGPS(true);
+let tempPin=null;
+window.xainoukHideNewPin=()=>{if(tempPin){map.removeLayer(tempPin);tempPin=null}selectedGPS=null;$('coordText').textContent='Tseem tsis tau xaiv qhov chaw GPS.';$('navStatus').textContent='Pin tshiab nkaum lawm. Nias ib qho chaw tshiab ntawm daim map kom xaiv dua.'};
+window.xainoukAddAtMapPoint=()=>{if(!selectedGPS)return;$('coordText').textContent='Xaiv GPS: '+selectedGPS.lat.toFixed(6)+', '+selectedGPS.lng.toFixed(6);$('name').focus();$('customerForm').scrollIntoView({behavior:'smooth',block:'center'});$('navStatus').textContent='Sau npe thiab xov tooj rau qhov chaw pin uas koj xaiv, ces nias Khaws customer.'};
+$('mapPickBtn').onclick=()=>{picking=true;alert('Nias qhov chaw customer nyob ntawm daim map.');};
+map.on('click',e=>{selectedGPS={lat:e.latlng.lat,lng:e.latlng.lng};picking=false;$('coordText').textContent='Qhov chaw xaiv ntawm map: '+selectedGPS.lat.toFixed(6)+', '+selectedGPS.lng.toFixed(6);if(tempPin)map.removeLayer(tempPin);tempPin=L.marker(e.latlng).addTo(map).bindPopup('<strong>Customer tshiab ntawm no</strong><br><button onclick=\"window.xainoukAddAtMapPoint()\" style=\"margin-top:8px;background:#16a34a;color:white;padding:8px 10px;border-radius:8px\">➕ Ntxiv customer ntawm no</button> <button onclick=\"window.xainoukHideNewPin()\" style=\"margin-top:8px;background:#e2e8f0;color:#17202a;padding:8px 10px;border-radius:8px\">❎ Nkaum pin</button>').openPopup();$('navStatus').textContent='Koj xaiv qhov chaw lawm. Nias lub pin thiab xaiv “Ntxiv customer ntawm no”.'});
+$('customerForm').onsubmit=e=>{e.preventDefault();if(!selectedGPS){alert('Thov nias “Siv kuv GPS” lossis “Xaiv ntawm map” ua ntej.');return}const c={id:String(Date.now())+Math.random().toString(16).slice(2,6),name:$('name').value.trim(),phone:$('phone').value.trim(),status:$('status').value,lastDelivery:$('lastDelivery').value||'',lat:selectedGPS.lat,lng:selectedGPS.lng};customers.push(c);save();if(tempPin){map.removeLayer(tempPin);tempPin=null}$('customerForm').reset();selectedGPS=null;$('coordText').textContent='Tseem tsis tau xaiv qhov chaw GPS.';render();if(markers[c.id]){map.setView([c.lat,c.lng],16);markers[c.id].openPopup()}};
+$('search').oninput=renderCustomers;
+$('addGreensBtn').onclick=()=>{customers.filter(c=>c.status==='green'&&Number.isFinite(c.lat)&&Number.isFinite(c.lng)).forEach(c=>{if(!route.includes(c.id))route.push(c.id)});save();renderRoute()};
+$('clearRouteBtn').onclick=()=>{if(confirm('Lwv txhua qhov chaw hauv txoj kev tam sim no?')){route=[];save();renderRoute()}};
+$('openRouteBtn').onclick=()=>{const stops=route.map(id=>getCustomer(id)).filter(c=>c&&Number.isFinite(c.lat)&&Number.isFinite(c.lng));if(!stops.length){alert('Thov xaiv customer ua ntej.');return}openDirections(stops)};
+$('finishRouteBtn').onclick=()=>{const stops=route.map(id=>getCustomer(id)).filter(c=>c&&Number.isFinite(c.lat)&&Number.isFinite(c.lng));if(!stops.length){alert('Txoj kev tseem tsis muaj customer.');return}if(!confirm('Cim tias hnub no koj mus xa khoom rau '+stops.length+' tus customer hauv txoj kev no lawm?'))return;const d=today();stops.forEach(c=>c.lastDelivery=d);history=history.filter(h=>h.date!==d);history.push({date:d,stops:stops.map(c=>({id:c.id,name:c.name,lat:c.lat,lng:c.lng}))});pruneHistory();save();render();alert('Khaws keeb kwm hnub '+d+' lawm. Lej hnub customer yuav rov suav txij hnub no.');};
+function pruneHistory(){const cutoff=new Date();cutoff.setHours(0,0,0,0);cutoff.setDate(cutoff.getDate()-30);history=history.filter(h=>new Date(h.date+'T12:00:00')>=cutoff)}
+$('historyDate').value=today();$('historyDate').onchange=renderHistory;
+$('clearOldBtn').onclick=()=>{pruneHistory();save();renderHistory();alert('Lwv keeb kwm uas dhau 30 hnub lawm.')}
+pruneHistory();render();
+// Thaum qhib app, sim nrhiav qhov chaw nyob tsis tas nias khawm; GPS watch pab hloov lub cim xiav thaum txav mus.
+if(window.isSecureContext && navigator.geolocation){setTimeout(()=>{startLiveGPS();useGPS(false)},700)}else{$('navStatus').textContent='GPS tseem tsis ua haujlwm vim koj qhib daim file ntawm content://. Yuav tsum tso daim app rau ib lub website HTTPS, ces qhib hauv Chrome thiab tso cai Location. Daim map tseem qhia duab tau, tiam sis tsis paub koj qhov chaw kom txog thaum qhib ntawm HTTPS.'}
+})();
+</script>
+</body>
+</html>
